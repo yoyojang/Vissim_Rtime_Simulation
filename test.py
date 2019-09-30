@@ -49,7 +49,7 @@ while break_time < end_time:
 
 
 
-    time2 = datetime.datetime.now()
+    time2 = datetime.datetime.now()-datetime.timedelta(days=2)
     time1 = time2 - datetime.timedelta(hours=1)
     strtime1 = datetime.datetime.strftime(time1,'%Y-%m-%d %H:%M:%S')
     strtime2 = datetime.datetime.strftime(time2,'%Y-%m-%d %H:%M:%S')
@@ -197,7 +197,7 @@ while break_time < end_time:
         DA = datacollection.AttValue(Acceleration)
         DD = datacollection.AttValue(Dist)
         DL = datacollection.AttValue(Length)
-        DV = datacollection.AttValue(Length)
+        DV = datacollection.AttValue(Vehs)
         DQ = datacollection.AttValue(QueueDelay)
         DSA = datacollection.AttValue(SpeedAvgArith)
         DSH = datacollection.AttValue(SpeedAvgHarm)
