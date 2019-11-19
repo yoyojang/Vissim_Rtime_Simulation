@@ -137,15 +137,15 @@ first_time = now - datetime.timedelta(minutes=minu_now,seconds=seco_now,microsec
 # print(first_time)
 
 
-volume_path = 'F:\\Development\\Vissim_Rtime_Simulation\\00.csv'
-rate_path = 'F:\\Development\\Vissim_Rtime_Simulation\\02.csv'
+volume_path = 'D:/Program/Vissim_Rtime_Simulation/00.csv'
+rate_path = 'D:/Program/Vissim_Rtime_Simulation/02.csv'
 
 
 real_volume_list = []
 real_rate_list = [[3,8]]
 
 n = 0
-while n < 24:
+while n < 25:
     if n == 0:
         volume_make(volume_path, first_time, volume_table, cursor, conn)
         print(datetime.datetime.now(),'完成第{}次流量模拟输入。'.format(n+1))

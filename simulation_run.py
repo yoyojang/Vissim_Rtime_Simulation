@@ -27,9 +27,9 @@ instruction_3_signal_progno = [3,1,2,2,3,3,4,4]
 instruction_4_signal_progno = [3,1,1,2,3,4,4,5]
 #编辑对应配时文件
 signal_Prog_file = [[1,'zs033.sig'],[2,'zs022.sig'],[3,'zs034.sig'],[4,'zs035.sig']]
-# Vissim = com.gencache.EnsureDispatch("Vissim.Vissim")
-Vissim = com.Dispatch("Vissim.Vissim")
-Path_of_COM_Basic_Commands_network = os.path.abspath('F:/Development/Vissim_Rtime_Simulation/zsvissim')
+Vissim = com.gencache.EnsureDispatch("Vissim.Vissim")
+# Vissim = com.Dispatch("Vissim.Vissim")
+Path_of_COM_Basic_Commands_network = os.path.abspath('D:/Program/Vissim_Rtime_Simulation/zsvissim')
 Filename  = os.path.join(Path_of_COM_Basic_Commands_network, 'Road ziyun.inpx')
 flag_read_additionally  = False
 Vissim.LoadNet(Filename, flag_read_additionally)
@@ -38,6 +38,10 @@ Vissim.LoadNet(Filename, flag_read_additionally)
 Attribute = "Name"
 NameOfLinks = Vissim.Net.Links.GetMultiAttValues(Attribute)
 NameOfLinks = toList(NameOfLinks) # convert to list
+
+#设置仿真速度
+Vissim.Simulation.SetAttValue('UseMaxSimSpeed', False)
+Vissim.Simulation.SetAttValue('SimSpeed', 1)
 
 total_end_time = 60*60*12
 interval = 60*5
@@ -50,9 +54,9 @@ conn = pymysql.connect(host="localhost", user="root", password='123456', databas
 cursor_vlm = conn.cursor()
 cursor_rtr = conn.cursor()
 
-#连接本地交通评价输出库
-conn_eval = pymysql.connect(host="localhost", user="root", password='123456', database='vissim_evaluation',
-                            charset='utf8')
+#连接本地交通评价输出库 172.192.10.101 trsp
+# conn_eval = pymysql.connect(host="localhost", user="root", password='123456', database='vissim_evaluation',charset='utf8')
+conn_eval = pymysql.connect(host="172.192.10.101", user="root", password='123456', database='trsp',charset='utf8')
 cursor_trvtm = conn_eval.cursor()
 cursor_edge = conn_eval.cursor()
 cursor_node = conn_eval.cursor()
@@ -133,7 +137,7 @@ total_start_time = datetime.datetime.now()
 print("应用启动时间:",total_start_time)
 
 cumu_num = 0
-while cumu_num < len(period_double):
+while cumu_num < len(period_double) and datetime.datetime.now().hour<23 :
     print('\n')
     if cumu_num == 0:
         end_time = first_run_time
@@ -254,7 +258,7 @@ while cumu_num < len(period_double):
             TT = Veh_TT_measurement.AttValue(TravTm)
             TV = Veh_TT_measurement.AttValue(Vehs)
             TD = Veh_TT_measurement.AttValue(DistTrav)
-            values_trvtm = (now,i,TT,TV,TD)
+            values_trvtm = (now,i,TV,TT,TD)
             try:
                 cursor_trvtm.execute(sql_trvtm, values_trvtm)
                 conn_eval.commit()
