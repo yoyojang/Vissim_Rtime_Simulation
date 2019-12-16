@@ -9,9 +9,6 @@ def set_progNo(SC_number,new_signal_programm_number):
     SignalController = Vissim.Net.SignalControllers.ItemByKey(SC_number)
     SignalController.SetAttValue('ProgNo', new_signal_programm_number)
 
-
-
-#清理仿真结果
 def toList(NestedTuple):
     # function to convert a nested tuple to a nested list
     return list(map(toList, NestedTuple)) if isinstance(NestedTuple, (list, tuple)) else NestedTuple
@@ -82,6 +79,8 @@ try:
 except:
     print("error:can't get signal program start time")
 
+conn.close()
+
 period = [x[0].seconds for x in period_list]
 period.insert(0,0)
 period.insert(len(period)+1,86400)
@@ -133,12 +132,21 @@ for i in range(len(period_double)):
 
 run_list = initial_list[number:] + initial_list[:number]
 
+
+#评价SQL语句
+sql_trvtm = "insert into traveltime() values(%s,%s,%s,%s,%s)"
+sql_node = "insert into node_movement() values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+sql_edge = "insert into edge_movement() values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+sql_datacollection = "insert into datacollection() values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+
 total_start_time = datetime.datetime.now()
 print("应用启动时间:",total_start_time)
 
+
 cumu_num = 0
-while cumu_num < len(period_double) and datetime.datetime.now().hour<23 :
+while cumu_num < len(period_double) and datetime.datetime.now().hour < 23:
     print('\n')
+
     if cumu_num == 0:
         end_time = first_run_time
     else:
@@ -221,6 +229,8 @@ while cumu_num < len(period_double) and datetime.datetime.now().hour<23 :
             # print(new_volume)
             Vissim.Net.VehicleInputs.ItemByKey(VI_number).SetAttValue('Volume(1)', new_volume)
         print('输入流量组为：',volume_list)
+
+
         #遍历并设置每个转向比
         rate_list = []
         for i in range(len(results_rtr)):
@@ -238,6 +248,8 @@ while cumu_num < len(period_double) and datetime.datetime.now().hour<23 :
                 'RelFlow(1)', new_relativ_flow)
         print('转向比为：',rate_list)
 
+        conn.close()
+
         now = str(datetime.datetime.now())
 
         #启动仿真
@@ -246,30 +258,12 @@ while cumu_num < len(period_double) and datetime.datetime.now().hour<23 :
         every_endtime = time.time()
         # print(every_endtime - start_time + break_time)
 
-        #车辆行程时间
-        sql_trvtm = "insert into traveltime() values(%s,%s,%s,%s,%s)"
-        tmmsmts = [1, 2, 3, 4, 5, 6, 7, 8]
+        # 评价数据列表
         TravTm = "TravTm(1,{},All)".format(n)
         Vehs = "Vehs(1,{},All)".format(n)
         DistTrav = "DistTrav(1,{},All)".format(n)
-        for i in tmmsmts:
-            # print(i)
-            Veh_TT_measurement = Vissim.Net.VehicleTravelTimeMeasurements.ItemByKey(i)
-            TT = Veh_TT_measurement.AttValue(TravTm)
-            TV = Veh_TT_measurement.AttValue(Vehs)
-            TD = Veh_TT_measurement.AttValue(DistTrav)
-            values_trvtm = (now,i,TV,TT,TD)
-            try:
-                cursor_trvtm.execute(sql_trvtm, values_trvtm)
-                conn_eval.commit()
-            except:
-                print("Error: unable to fecth data")
+        att1 = ['No', TravTm, Vehs, DistTrav]
 
-
-
-        # 节点每转向数据
-        Nodes_list = [1, 2, 3, 4]
-        edges_list = []
         Qlen = "QLen(1,{})".format(n)
         QlenM = "QLenMax(1,{})".format(n)
         Vehs = "Vehs(1,{},All)".format(n)
@@ -280,58 +274,9 @@ while cumu_num < len(period_double) and datetime.datetime.now().hour<23 :
         EmissionsNOx = "EmissionsNOx(1,{})".format(n)
         EmissionsVOC = "EmissionsVOC(1,{})".format(n)
         FuelConsumption = "FuelConsumption(1,{})".format(n)
-        for i in Nodes_list:
-            Node_Movement = Vissim.Net.Nodes.ItemByKey(i).Movements
-            Edges = Node_Movement.GetMultiAttValues('Edges')
-            for i in range(len(Edges)):
-                add_item = Edges[i][1]
-                if len(add_item) > 0:
-                    edges_list.append(add_item)
+        att2 = ['Node', 'Edges', Qlen, QlenM, Vehs, LOSVal, VehDelay, Stops, EmissionsCO, EmissionsNOx, EmissionsVOC,
+                FuelConsumption]
 
-        sql_edge = "insert into edge_movement() values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-        for i in edges_list:
-            edge_movement = Vissim.Net.Edges.ItemByKey(i).Movement
-            EQ = edge_movement.AttValue(Qlen)
-            EQM = edge_movement.AttValue(QlenM)
-            EV = edge_movement.AttValue(Vehs)
-            EL = edge_movement.AttValue(LOSVal)
-            EVD = edge_movement.AttValue(VehDelay)
-            ES = edge_movement.AttValue(Stops)
-            EEC = edge_movement.AttValue(EmissionsCO)
-            EEN = edge_movement.AttValue(EmissionsNOx)
-            EEV = edge_movement.AttValue(EmissionsVOC)
-            EFC = edge_movement.AttValue(FuelConsumption)
-            values_edge = (now,i,EQ,EQM,EV,EL,EVD,ES,EEC,EEN,EEV,EFC)
-            try:
-                cursor_edge.execute(sql_edge, values_edge)
-                conn_eval.commit()
-            except:
-                print("Error: unable to fecth data")
-
-        # 某节点综合指数
-        sql_node = "insert into node_movement() values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-        for i in Nodes_list:
-            node = Vissim.Net.Nodes.ItemByKey(i).TotRes
-            EQ = node.AttValue(Qlen)
-            EQM = node.AttValue(QlenM)
-            EV = node.AttValue(Vehs)
-            EL = node.AttValue(LOSVal)
-            EVD = node.AttValue(VehDelay)
-            ES = node.AttValue(Stops)
-            EEC = node.AttValue(EmissionsCO)
-            EEN = node.AttValue(EmissionsNOx)
-            EEV = node.AttValue(EmissionsVOC)
-            EFC = node.AttValue(FuelConsumption)
-            values_node = (now, i, EQ, EQM, EV, EL, EVD, ES, EEC, EEN, EEV, EFC)
-            try:
-                cursor_node.execute(sql_node, values_node)
-                conn_eval.commit()
-            except:
-                print("Error: unable to fecth data")
-
-        # 路段数据采集datacollection
-        sql_datacollection = "insert into datacollection() values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-        datacollections_list = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010]
         Acceleration = "Acceleration(1,{},All)".format(n)
         Dist = "Dist(1,{},All)".format(n)
         Length = "Length(1,{},All)".format(n)
@@ -340,23 +285,78 @@ while cumu_num < len(period_double) and datetime.datetime.now().hour<23 :
         SpeedAvgArith = "SpeedAvgArith(1,{},All)".format(n)
         SpeedAvgHarm = "SpeedAvgHarm(1,{},All)".format(n)
         OccupRate = "OccupRate(1,{},All)".format(n)
+        att3 = ['No', Acceleration, Dist, Length, Vehs, QueueDelay, SpeedAvgArith, SpeedAvgHarm, OccupRate]
 
-        for i in datacollections_list:
-            datacollection = Vissim.Net.DataCollectionMeasurements.ItemByKey(i)
-            DA = datacollection.AttValue(Acceleration)
-            DD = datacollection.AttValue(Dist)
-            DL = datacollection.AttValue(Length)
-            DV = datacollection.AttValue(Vehs)
-            DQ = datacollection.AttValue(QueueDelay)
-            DSA = datacollection.AttValue(SpeedAvgArith)
-            DSH = datacollection.AttValue(SpeedAvgHarm)
-            DO = datacollection.AttValue(OccupRate)
-            values_datacollection = (now,i,DA,DD,DL,DV,DQ,DSA,DSH,DO)
-            try:
-                cursor_datacollection.execute(sql_datacollection, values_datacollection)
-                conn_eval.commit()
-            except:
-                print("Error: unable to fecth data")
+
+        xi = [now]
+
+        #车辆行程时间
+        Veh_TT_measurement = Vissim.Net.VehicleTravelTimeMeasurements
+        TravelTimeValue = Veh_TT_measurement.GetMultipleAttributes(att1)
+
+        TravelTimeGroup = []
+        for each in TravelTimeValue:
+            xo = []
+            xo = xi + list(each)
+            TravelTimeGroup.append(xo)
+
+
+        try:
+            cursor_trvtm.executemany(sql_trvtm, TravelTimeGroup)
+            conn_eval.commit()
+        except:
+            print("Error: unable to fecth data")
+
+        # MOVEMENT
+        NodeGroup = Vissim.Net.Nodes
+        NodeEdgeTotalList = []
+        for each in NodeGroup:
+            NodeEdgeTotal = each.Movements.GetMultipleAttributes(att2)
+            NodeEdgeTotalList += NodeEdgeTotal
+
+        EdgesValueGroup = []
+        NodesValueGroup = []
+        EdgesValueGroup_each = [now]
+        NodesValueGroup_each = [now]
+        for each in NodeEdgeTotalList:
+            EdgesValueGroup_each = [now]
+            NodesValueGroup_each = [now]
+            if each[1] == '':
+                NodesValueGroup_each += each[0]
+                NodesValueGroup_each += each[2:]
+                NodesValueGroup.append(NodesValueGroup_each)
+            else:
+                EdgesValueGroup_each += each[1:]
+                EdgesValueGroup.append(EdgesValueGroup_each)
+
+        try:
+            cursor_node.executemany(sql_node, NodesValueGroup)
+            conn_eval.commit()
+        except:
+            print("Error: unable to fecth data")
+
+        try:
+            cursor_edge.executemany(sql_edge, EdgesValueGroup)
+            conn_eval.commit()
+        except:
+            print("Error: unable to fecth data")
+
+
+        # 路段数据采集datacollection
+        Datacollection = Vissim.Net.DataCollectionMeasurements
+        DatacollectionValue = Datacollection.GetMultipleAttributes(att3)
+        DatacollectionGroup = []
+        for each in DatacollectionValue:
+            xo = []
+            xo = xi + list(each)
+            DatacollectionGroup.append(xo)
+
+        try:
+            cursor_trvtm.executemany(sql_datacollection, DatacollectionGroup)
+            conn_eval.commit()
+        except:
+            print("Error: unable to fecth data")
+
         print(datetime.datetime.now())
 
     cumu_num += 1
@@ -364,6 +364,5 @@ while cumu_num < len(period_double) and datetime.datetime.now().hour<23 :
     # print(start_time-endtime)
     print("第{}阶段，第{}间隔，结束时间：{}".format(run_list[cumu_num],n,datetime.datetime.now()))
 # 关闭数据库连接
-conn.close()
 conn_eval.close()
 print("应用结束时间：",datetime.datetime.now())

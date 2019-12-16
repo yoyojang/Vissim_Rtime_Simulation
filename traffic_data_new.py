@@ -3,9 +3,6 @@ import pymysql
 import datetime
 import time
 
-
-conn = pymysql.connect(host="localhost", user="root", password='123456', database='traffic_test', charset='utf8')
-cursor = conn.cursor()
 volume_table = 'volume_data'
 rate_table = 'route_rate'
 
@@ -35,46 +32,52 @@ micros_now = now.microsecond
 first_time = now - datetime.timedelta(minutes=minu_now,seconds=seco_now,microseconds=micros_now)
 
 n = 0
-while n < 25:
 
-    volume_list = csv_to_tuple('VolumeList', datetime.datetime.now().hour, first_time)
-    rate_list = csv_to_tuple('RateList', datetime.datetime.now().hour, first_time)
+while n < 24:
+    conn = pymysql.connect(host="localhost", user="root", password='123456', database='traffic_test', charset='utf8')
+    cursor = conn.cursor()
+
+    now_each = datetime.datetime.now()
+    volume_list = csv_to_tuple('VolumeList', now_each.hour, first_time)
+    rate_list = csv_to_tuple('RateList', now_each.hour, first_time)
     # print(volume_list)
     # print(rate_list)
     if n == 0:
-
         try:
             cursor.executemany(sql_v, volume_list)
             conn.commit()
-            print(datetime.datetime.now(), '完成第{}次流量模拟输入。'.format(n + 1))
+            print(now_each, '完成第{}次流量模拟输入。'.format(n + 1))
         except:
             print("无法插入流量")
 
         try:
             cursor.executemany(sql_r, rate_list)
             conn.commit()
-            print(datetime.datetime.now(), '完成第{}次转向比模拟输入。'.format(n + 1))
+            print(now_each, '完成第{}次转向比模拟输入。'.format(n + 1))
         except:
             print("无法插入转向比例")
         time.sleep(3600 - minu_now*60 + seco_now)
         # time.sleep(60 - seco_now)
+    elif n == 23:
+        break
     else:
-        first_time += datetime.timedelta(hours=1)
         try:
             cursor.executemany(sql_v, volume_list)
             conn.commit()
-            print(datetime.datetime.now(), '完成第{}次流量模拟输入。'.format(n + 1))
+            print(now_each, '完成第{}次流量模拟输入。'.format(n + 1))
         except:
             print("无法插入流量")
 
         try:
             cursor.executemany(sql_r, rate_list)
             conn.commit()
-            print(datetime.datetime.now(), '完成第{}次转向比模拟输入。'.format(n + 1))
+            print(now_each, '完成第{}次转向比模拟输入。'.format(n + 1))
         except:
             print("无法插入转向比例")
 
         time.sleep(3600)
+    first_time += datetime.timedelta(hours=1)
+    conn.close()
     n += 1
 
 
